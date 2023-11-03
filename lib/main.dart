@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
-
+import 'dart:typed_data';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:whatsapp_share/whatsapp_share.dart';
 import 'package:image_picker/image_picker.dart';
@@ -67,7 +70,54 @@ class MyApp extends StatelessWidget {
       filePath: [localPath!],
     );
   }
+  Future<void> sharePdfFile() async {
+    try {
+      // Generate the PDF
+      final Uint8List pdfData = await generatePdf();
 
+      // Determine the directory based on the platform
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = await getExternalStorageDirectory();
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      // Check if the directory is not null
+      if (directory != null) {
+        final String pdfPath = '${directory.path}/sample.pdf';
+
+        // Save the generated PDF to a file
+        final File pdfFile = File(pdfPath);
+        await pdfFile.writeAsBytes(pdfData, flush: true);
+
+        // Use WhatsappShare to share the generated PDF file
+        await WhatsappShare.shareFile(
+          phone: '916238814407',
+          filePath: [pdfPath],
+        );
+      } else {
+        debugPrint('Directory is null.');
+      }
+    } catch (er) {
+      print(er.toString());
+    }
+  }
+
+  Future<Uint8List> generatePdf() async {
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Center(
+            child: pw.Text('Hello, this is a sample PDF document!'),
+          );
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -95,7 +145,7 @@ class MyApp extends StatelessWidget {
                   child: const Text('Share screenshot'),
                 ),
                 ElevatedButton(
-                  onPressed: isInstalled,
+                  onPressed: sharePdfFile,
                   child: const Text('is Installed'),
                 ),
               ],
@@ -120,4 +170,26 @@ class MyApp extends StatelessWidget {
       log(er.toString());
     }
   }
+
+  Future getPdfFile() async {
+    try {
+      FilePickerResult? pickedFile = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (pickedFile != null && pickedFile.files.isNotEmpty) {
+        // The user selected a PDF file
+        PlatformFile pdfFile = pickedFile.files.first;
+        String? pdfPath = pdfFile.path;
+
+        // You can now use pdfPath for further processing or sharing
+      } else {
+        // User didn't select a PDF file
+      }
+    } catch (er) {
+      print(er.toString());
+    }
+  }
+
 }
